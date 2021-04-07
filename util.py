@@ -3,11 +3,11 @@ import struct
 
 
 def u16(buf, off):
-    return struct.unpack("<H", buf[off:off+2])[0]
+    return struct.unpack('<H', bytes(buf[off:off+2], 'latin-1'))[0]
 
 
 def u32(buf, off):
-    return struct.unpack("<I", buf[off:off+4])[0]
+    return struct.unpack('<I', bytes(buf[off:off+4], 'latin-1'))[0]
 
 
 def c_str(buf, off):
@@ -29,4 +29,4 @@ def hexdump(src, length=16, sep='.'):
             hex = "%s %s" % (hex[:24], hex[24:])
         printable = ''.join(["%s" % FILTER[ord(x)] for x in chars])
         lines.append("%08x:  %-*s  |%s|\n" % (c, length*3, hex, printable))
-    print ''.join(lines)
+    print(' '.join(lines))

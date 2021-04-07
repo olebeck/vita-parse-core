@@ -79,7 +79,7 @@ class VitaAddress():
             state = "Thumb"
             addr_to_display &= ~1
 
-        if self.is_located() and self.__module.name.endswith(".elf"):
+        if self.is_located(): #and self.__module.name.endswith(".elf"):
             iprint()
             iprint("DISASSEMBLY AROUND {}: 0x{:x} ({}):".format(self.__symbol, addr_to_display, state))
             elf.disas_around_addr(self.__offset)
@@ -88,7 +88,7 @@ class VitaAddress():
         if self.is_located():
             output = "{}: 0x{:x} ({}@{} + 0x{:x}".format(self.__symbol, self.__vaddr,
                        self.__module.name, self.__segment.num, self.__offset)
-            if elf and self.__module.name.endswith(".elf") and self.__segment.num == 1:
+            if elf and self.__segment.num == 1:# and self.__module.name.endswith(".elf") and self.__segment.num == 1:
                 output += " => {}".format(elf.addr2line(self.__offset))
             output += ')'
         else:

@@ -14,7 +14,6 @@ class ElfParser():
         self.filename = filename
         f = open(filename, "rb")
         self.elf = ELFFile(f)
-        
         self.rx_vaddr = -1
         self.parse_segments()
 
@@ -31,7 +30,7 @@ class ElfParser():
 
     def disas_around_addr(self, addr):
         """ Addr is offset in executable segment """
-	if addr & 1 != 0:
+        if addr & 1 != 0:
             addr &= ~1
             thumb = True
         else:
@@ -47,11 +46,11 @@ class ElfParser():
             args += ['-Mforce-thumb']
 
         output = subprocess.check_output(args)
-        lines = output.split("\n")
+        lines = output.split(bytes("\n", 'latin-1'))
         keep = False
         new_lines = []
         for line in lines:
-            if "Disassembly of section" in line:
+            if "Disassembly of section" in line.decode("latin-1"):
                 keep = True
                 continue
             if keep:
@@ -59,6 +58,7 @@ class ElfParser():
         lines = new_lines
 
         for x, line in enumerate(lines):
+            line = line.decode("latin-1")
             if "{:x}:".format(addr) in line:
                 line = line[line.find("\t"):]
                 line = "!!! \t{} !!!".format(line)
@@ -79,7 +79,7 @@ class ElfParser():
     def addr2line(self, addr):
         """ Addr is offset in executable segment """
         addr += self.rx_vaddr
-        self.a2l.stdin.write(hex(addr) + "\n")
+        self.a2l.stdin.write(bytes(hex(addr) + "\n", 'latin-1'))
         self.a2l.stdin.flush()
         out = self.a2l.stdout.readline()
         return out.strip()
