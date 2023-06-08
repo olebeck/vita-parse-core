@@ -116,8 +116,6 @@ def print_coredump(elf, core, stackSize):
 
 def main():
     global core
-    import sys
-    sys.argv.extend(["-u", "true", "none", "build/MCPE.elf"])
     parser = ArgumentParser()
     parser.add_argument("-u", "--upload", type=bool, help="listen as a upload server on :1339")
     parser.add_argument("-s", "--stack-size-to-print", dest="stacksize", type=int, help="Number of addresses of the stack to print", metavar="SIZE", default=24)
@@ -125,12 +123,12 @@ def main():
     parser.add_argument("elffile")
     args = parser.parse_args()
     stackSize = args.stacksize
-    elf = ElfParser(args.elffile)
 
     if args.upload:
         PORT = 1339
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_POST(self):
+                # read body
                 content_length = int(self.headers['Content-Length'])
                 boundary = self.headers["Content-Type"].split("boundary=")[1]
                 p = multipart.MultipartParser(self.rfile, boundary.encode("utf8"), content_length)
@@ -138,6 +136,8 @@ def main():
                 print(f"parsing: {corefile.name}")
                 global core
                 core = CoreParser.from_stream(corefile.file)
+
+                elf = ElfParser(args.elffile)
                 print_coredump(elf, core, stackSize)
                 self.send_response(200)
                 self.end_headers()
@@ -146,6 +146,7 @@ def main():
             print("serving at port", PORT)
             httpd.serve_forever()
     else:
+        elf = ElfParser(args.elffile)
         core = CoreParser(args.corefile)
         print_coredump(elf, core, stackSize)
 
