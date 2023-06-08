@@ -110,6 +110,13 @@ class Segment():
 
 
 class CoreParser():
+    @classmethod
+    def from_stream(cls, f):
+        obj = cls.__new__(cls)
+        f = gzip.open(f, "rb")
+        obj.elf = ELFFile(f)
+        obj.parse()
+        return obj
 
     def __init__(self, filename):
         try:
@@ -119,14 +126,14 @@ class CoreParser():
             f.close()
             f = open(filename, "rb")
             self.elf = ELFFile(f)
-        
-        self.init_notes()
+        self.parse()
+        f.close()
 
+    def parse(self):
+        self.init_notes()
         self.parse_modules()
         self.parse_threads()
         self.parse_thread_regs()
-
-        f.close()
 
     def init_notes(self):
         self.notes = dict()

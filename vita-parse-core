@@ -9,6 +9,11 @@ from indent import indent, iprint
 from elf import ElfParser
 from core import CoreParser
 
+import http.server
+import socketserver
+import multipart
+
+
 str_stop_reason = defaultdict(str, {
     0: "No reason",
     0x30002: "Undefined instruction exception",
@@ -61,19 +66,8 @@ def print_thread_info(thread, elf=None):
         if not pc.is_located():
             iprint(core.get_address_notation("LR", thread.regs.gpr[14]).to_string(elf))
 
-def main():
-    global core
 
-    parser = ArgumentParser()
-    parser.add_argument("-s", "--stack-size-to-print", dest="stacksize",
-                        type=int, help="Number of addresses of the stack to print", metavar="SIZE", default=24)
-    parser.add_argument("corefile")
-    parser.add_argument("elffile")
-    args = parser.parse_args()
-    stackSize = args.stacksize
-
-    elf = ElfParser(args.elffile)
-    core = CoreParser(args.corefile)
+def print_coredump(elf, core, stackSize):
     # iprint("=== MODULES ===")
     # with indent():
     #     for module in core.modules:
@@ -103,8 +97,7 @@ def main():
 
             iprint(pc)
             iprint(lr)
-                
-                
+
         iprint()
 
         iprint("STACK CONTENTS AROUND SP:")
@@ -120,6 +113,42 @@ def main():
                         prefix = "SP =>"
                     data_notation = core.get_address_notation("{} 0x{:x}".format(prefix, addr), data)
                     iprint(data_notation.to_string(elf))
+
+def main():
+    global core
+    import sys
+    sys.argv.extend(["-u", "true", "none", "build/MCPE.elf"])
+    parser = ArgumentParser()
+    parser.add_argument("-u", "--upload", type=bool, help="listen as a upload server on :1339")
+    parser.add_argument("-s", "--stack-size-to-print", dest="stacksize", type=int, help="Number of addresses of the stack to print", metavar="SIZE", default=24)
+    parser.add_argument("corefile")
+    parser.add_argument("elffile")
+    args = parser.parse_args()
+    stackSize = args.stacksize
+    elf = ElfParser(args.elffile)
+
+    if args.upload:
+        PORT = 1339
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                content_length = int(self.headers['Content-Length'])
+                boundary = self.headers["Content-Type"].split("boundary=")[1]
+                p = multipart.MultipartParser(self.rfile, boundary.encode("utf8"), content_length)
+                corefile = p.parts()[0]
+                print(f"parsing: {corefile.name}")
+                global core
+                core = CoreParser.from_stream(corefile.file)
+                print_coredump(elf, core, stackSize)
+                self.send_response(200)
+                self.end_headers()
+
+        with socketserver.TCPServer(("", PORT), Handler) as httpd:
+            print("serving at port", PORT)
+            httpd.serve_forever()
+    else:
+        core = CoreParser(args.corefile)
+        print_coredump(elf, core, stackSize)
+
 
 if __name__ == "__main__":
     main()
